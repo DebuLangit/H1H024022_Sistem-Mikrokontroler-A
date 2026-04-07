@@ -4,18 +4,19 @@ const int tlKuning = 5;
 const int tlMerah = 6;
 
 // --- DEFINISI PIN PEDESTRIAN KIRI ---
-const int pedKiriHijau = 2;
-const int pedKiriMerah = 3;
-const int btnKiri = 9;
+const int pedKiriHijau = 9;
+const int pedKiriMerah = 10;
+const int btnKiri = 2; 
 
 // --- DEFINISI PIN PEDESTRIAN KANAN ---
 const int pedKananHijau = 7;
 const int pedKananMerah = 8;
-const int btnKanan = 10;
+const int btnKanan = 3; 
 
-// --- PENGATURAN WAKTU (dalam milidetik) ---
 const int waktuMenyeberang = 5000; // Waktu pejalan kaki menyeberang (5 detik)
-const int waktuTransisi = 2000;    // Waktu transisi lampu kuning (2 detik)
+
+// Variabel flag untuk menandai interupsi.
+volatile bool tombolDitekan = false; 
 
 void setup() {
   // Inisialisasi pin LED sebagai OUTPUT
@@ -35,70 +36,77 @@ void setup() {
 
   // Set Kondisi Awal saat Arduino pertama kali menyala
   setKondisiAwal();
+
+  // Sintaks Interrupt
+  attachInterrupt(digitalPinToInterrupt(btnKiri), isrMenyeberang, RISING);
+  attachInterrupt(digitalPinToInterrupt(btnKanan), isrMenyeberang, RISING);
 }
 
-// Fungsi untuk mengatur sistem ke status "Default"
+// Kondisi Awal (Kendaraan Hijau, Pedestrian Merah)
 void setKondisiAwal() {
-  // Lampu kendaraan hijau
   digitalWrite(tlMerah, LOW);
   digitalWrite(tlKuning, LOW);
   digitalWrite(tlHijau, HIGH);
 
-  // Lampu pedestrian merah
   digitalWrite(pedKiriMerah, HIGH);
   digitalWrite(pedKiriHijau, LOW);
   digitalWrite(pedKananMerah, HIGH);
   digitalWrite(pedKananHijau, LOW);
 }
 
-void loop() {
-  // Membaca status kedua tombol
-  int statusBtnKiri = digitalRead(btnKiri);
-  int statusBtnKanan = digitalRead(btnKanan);
+// Fungsi ISR (Interrupt Service Routine)
+void isrMenyeberang() {
+  tombolDitekan = true;
+}
 
-  // Jika tombol kiri ATAU tombol kanan ditekan
-  if (statusBtnKiri == HIGH || statusBtnKanan == HIGH) {
+void loop() {
+  if (tombolDitekan == true) {
     
-    // --------------------------------------------------
-    // FASE 1: SAAT DITEKAN
-    // --------------------------------------------------
-    // Lampu kendaraan berubah menjadi merah
+    // FASE 1: PERSIAPAN BERHENTI (Tombol Ditekan)
+    // Matikan lampu hijau kendaraan
     digitalWrite(tlHijau, LOW);
-    digitalWrite(tlMerah, HIGH);
     
-    // Lampu pedestrian berubah menjadi hijau
+    // Efek lampu kuning kedip 3 kali sebelum merah menyala
+    for (int i = 0; i < 3; i++) {
+      digitalWrite(tlKuning, HIGH);
+      delay(300); // Menyala 300ms
+      digitalWrite(tlKuning, LOW);
+      delay(300); // Mati 300ms
+    }
+
+    // FASE 2: MENYEBERANG
+    // Lampu kendaraan merah, pedestrian hijau
+    digitalWrite(tlMerah, HIGH);
     digitalWrite(pedKiriMerah, LOW);
     digitalWrite(pedKiriHijau, HIGH);
     digitalWrite(pedKananMerah, LOW);
     digitalWrite(pedKananHijau, HIGH);
     
-    // Tahan kondisi ini agar pejalan kaki bisa menyeberang
+    // Waktu pejalan kaki menyeberang
     delay(waktuMenyeberang);
 
-    // --------------------------------------------------
-    // FASE 2: SETELAH WAKTU TERTENTU
-    // --------------------------------------------------
+    // FASE 3: PERSIAPAN JALAN KEMBALI
     // Lampu pedestrian kembali merah
     digitalWrite(pedKiriHijau, LOW);
     digitalWrite(pedKiriMerah, HIGH);
     digitalWrite(pedKananHijau, LOW);
     digitalWrite(pedKananMerah, HIGH);
     
-    // Lampu kendaraan memasuki fase kuning (transisi)
+    // Matikan lampu merah kendaraan
     digitalWrite(tlMerah, LOW);
-    digitalWrite(tlKuning, HIGH);
     
-    // Tahan kondisi transisi kuning
-    delay(waktuTransisi);
+    // Efek lampu kuning kedip 3 kali sebelum hijau menyala
+    for (int i = 0; i < 3; i++) {
+      digitalWrite(tlKuning, HIGH);
+      delay(300); // Menyala 300ms
+      digitalWrite(tlKuning, LOW);
+      delay(300); // Mati 300ms
+    }
 
-    // --------------------------------------------------
-    // FASE 3: SISTEM KEMBALI KE KONDISI AWAL
-    // --------------------------------------------------
-    // Memanggil fungsi setKondisiAwal() (Lampu kendaraan hijau, pedestrian merah)
-    setKondisiAwal();
+    // FASE 4: SISTEM KEMBALI NORMAL
+    setKondisiAwal(); // Memastikan lampu hijau menyala dan kuning mati
     
-    // Tambahkan jeda pengaman (1 detik) agar sistem tidak langsung memicu ulang
-    // jika tombol masih tidak sengaja ditahan oleh pengguna
-    delay(1000); 
+    delay(1000); // Jeda pengaman agar tidak pemicuan ganda
+    tombolDitekan = false; // Reset flag interrupt
   }
 }
