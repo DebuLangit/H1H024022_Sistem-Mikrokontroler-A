@@ -1,104 +1,82 @@
-// --- DEFINISI PIN TRAFFIC LIGHT ---
-const int tlHijau = 4;
-const int tlKuning = 5;
-const int tlMerah = 6;
+// --- DEFINISI PIN ---
 
-// --- DEFINISI PIN PEDESTRIAN KIRI ---
-const int pedKiriHijau = 2;
-const int pedKiriMerah = 3;
-const int btnKiri = 9;
+// 1. Arah Utara
+const int utaraMerah = 13;
+const int utaraKuning = 12;
+const int utaraHijau = 11;
 
-// --- DEFINISI PIN PEDESTRIAN KANAN ---
-const int pedKananHijau = 7;
-const int pedKananMerah = 8;
-const int btnKanan = 10;
+// 2. Arah Timur
+const int timurMerah = 4;
+const int timurKuning = 3;
+const int timurHijau = 2;
 
-// --- PENGATURAN WAKTU (dalam milidetik) ---
-const int waktuMenyeberang = 5000; // Waktu pejalan kaki menyeberang (5 detik)
-const int waktuTransisi = 2000;    // Waktu transisi lampu kuning (2 detik)
+// 3. Arah Selatan
+const int selatanMerah = 7;
+const int selatanKuning = 6;
+const int selatanHijau = 5;
+
+// 4. Arah Barat
+const int baratMerah = 10;
+const int baratKuning = 9;
+const int baratHijau = 8;
 
 void setup() {
-  // Inisialisasi pin LED sebagai OUTPUT
-  pinMode(tlMerah, OUTPUT);
-  pinMode(tlKuning, OUTPUT);
-  pinMode(tlHijau, OUTPUT);
-  
-  pinMode(pedKiriMerah, OUTPUT);
-  pinMode(pedKiriHijau, OUTPUT);
-  
-  pinMode(pedKananMerah, OUTPUT);
-  pinMode(pedKananHijau, OUTPUT);
+  // Mengatur semua pin LED sebagai OUTPUT
+  pinMode(utaraMerah, OUTPUT); pinMode(utaraKuning, OUTPUT); pinMode(utaraHijau, OUTPUT);
+  pinMode(timurMerah, OUTPUT); pinMode(timurKuning, OUTPUT); pinMode(timurHijau, OUTPUT);
+  pinMode(selatanMerah, OUTPUT); pinMode(selatanKuning, OUTPUT); pinMode(selatanHijau, OUTPUT);
+  pinMode(baratMerah, OUTPUT); pinMode(baratKuning, OUTPUT); pinMode(baratHijau, OUTPUT);
 
-  // Inisialisasi pin Button sebagai INPUT
-  pinMode(btnKiri, INPUT);
-  pinMode(btnKanan, INPUT);
-
-  // Set Kondisi Awal saat Arduino pertama kali menyala
-  setKondisiAwal();
-}
-
-// Fungsi untuk mengatur sistem ke status "Default"
-void setKondisiAwal() {
-  // Lampu kendaraan hijau
-  digitalWrite(tlMerah, LOW);
-  digitalWrite(tlKuning, LOW);
-  digitalWrite(tlHijau, HIGH);
-
-  // Lampu pedestrian merah
-  digitalWrite(pedKiriMerah, HIGH);
-  digitalWrite(pedKiriHijau, LOW);
-  digitalWrite(pedKananMerah, HIGH);
-  digitalWrite(pedKananHijau, LOW);
+  // Kondisi Default: Semua lampu dalam kondisi MERAH
+  setSemuaMerah();
 }
 
 void loop() {
-  // Membaca status kedua tombol
-  int statusBtnKiri = digitalRead(btnKiri);
-  int statusBtnKanan = digitalRead(btnKanan);
+  // Berjalan terus menerus (loop) dan Searah jarum jam
+  aktifkanSimpang(utaraMerah, utaraKuning, utaraHijau);
+  aktifkanSimpang(timurMerah, timurKuning, timurHijau);
+  aktifkanSimpang(selatanMerah, selatanKuning, selatanHijau);
+  aktifkanSimpang(baratMerah, baratKuning, baratHijau);
+}
 
-  // Jika tombol kiri ATAU tombol kanan ditekan
-  if (statusBtnKiri == HIGH || statusBtnKanan == HIGH) {
-    
-    // --------------------------------------------------
-    // FASE 1: SAAT DITEKAN
-    // --------------------------------------------------
-    // Lampu kendaraan berubah menjadi merah
-    digitalWrite(tlHijau, LOW);
-    digitalWrite(tlMerah, HIGH);
-    
-    // Lampu pedestrian berubah menjadi hijau
-    digitalWrite(pedKiriMerah, LOW);
-    digitalWrite(pedKiriHijau, HIGH);
-    digitalWrite(pedKananMerah, LOW);
-    digitalWrite(pedKananHijau, HIGH);
-    
-    // Tahan kondisi ini agar pejalan kaki bisa menyeberang
-    delay(waktuMenyeberang);
+// --- FUNGSI MODULAR ---
 
-    // --------------------------------------------------
-    // FASE 2: SETELAH WAKTU TERTENTU
-    // --------------------------------------------------
-    // Lampu pedestrian kembali merah
-    digitalWrite(pedKiriHijau, LOW);
-    digitalWrite(pedKiriMerah, HIGH);
-    digitalWrite(pedKananHijau, LOW);
-    digitalWrite(pedKananMerah, HIGH);
-    
-    // Lampu kendaraan memasuki fase kuning (transisi)
-    digitalWrite(tlMerah, LOW);
-    digitalWrite(tlKuning, HIGH);
-    
-    // Tahan kondisi transisi kuning
-    delay(waktuTransisi);
+// Fungsi untuk memastikan kondisi awal jalanan terkunci (Merah semua)
+void setSemuaMerah() {
+  digitalWrite(utaraMerah, HIGH);   digitalWrite(utaraKuning, LOW);   digitalWrite(utaraHijau, LOW);
+  digitalWrite(timurMerah, HIGH);   digitalWrite(timurKuning, LOW);   digitalWrite(timurHijau, LOW);
+  digitalWrite(selatanMerah, HIGH); digitalWrite(selatanKuning, LOW); digitalWrite(selatanHijau, LOW);
+  digitalWrite(baratMerah, HIGH);   digitalWrite(baratKuning, LOW);   digitalWrite(baratHijau, LOW);
+}
 
-    // --------------------------------------------------
-    // FASE 3: SISTEM KEMBALI KE KONDISI AWAL
-    // --------------------------------------------------
-    // Memanggil fungsi setKondisiAwal() (Lampu kendaraan hijau, pedestrian merah)
-    setKondisiAwal();
-    
-    // Tambahkan jeda pengaman (1 detik) agar sistem tidak langsung memicu ulang
-    // jika tombol masih tidak sengaja ditahan oleh pengguna
-    delay(1000); 
+// Fungsi utama untuk mengatur timing setiap simpang secara bergantian
+void aktifkanSimpang(int pinMerah, int pinKuning, int pinHijau) {
+  
+  // 1. TRANSISI BARU: Merah mati, 
+  digitalWrite(pinMerah, LOW);   
+  // 2. Kuning menyala sebagai aba-aba (2 detik)
+  digitalWrite(pinKuning, HIGH);
+  delay(2000);
+  digitalWrite(pinKuning, LOW); 
+
+  // 3. Lampu Hijau menyala selama 5 detik
+  digitalWrite(pinHijau, HIGH);
+  delay(5000); 
+  digitalWrite(pinHijau, LOW);
+
+  // 4. Efek kedip Kuning 3 kali peringatan hijau mau habis
+  for (int i = 0; i < 3; i++) {
+    digitalWrite(pinKuning, HIGH);
+    delay(300); 
+    digitalWrite(pinKuning, LOW);
+    delay(300); 
   }
+
+  // 5. Lampu Kuning menyala solid selama 2 detik
+  digitalWrite(pinKuning, HIGH);
+  delay(2000);
+  digitalWrite(pinKuning, LOW);
+
+  // 6. Kembalikan ke Lampu Merah setelah giliran selesai
+  digitalWrite(pinMerah, HIGH);
 }
